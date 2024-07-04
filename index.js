@@ -1,12 +1,13 @@
 const express = require('express');
 const { createFunction } = require('./functions/functions');
+const { getQRImages, getQRImagePath } = require('./functions/qrImages'); // Importar funciones de manejo de imágenes
 const app = express();
 const port = 4010;
 const path = require('path');
 
 app.use(express.json()); // Middleware para parsear JSON
 
-// Ruta para crear el archivo
+// Rutas para crear y ejecutar funciones dinámicas
 app.post('/crear', (req, res) => {
     const { nombre, id_externo } = req.body;
 
@@ -69,7 +70,33 @@ app.post('/ejecutar', async (req, res) => {
     }
 });
 
+// Rutas para manejar imágenes .qr.png
+app.get('/qr-images-list', async (req, res) => {
+    try {
+        const qrImages = await getQRImages();
+        res.json(qrImages);
+    } catch (err) {
+        console.error('Error al obtener imágenes .qr.png:', err);
+        res.status(500).json({ error: 'Error al obtener imágenes .qr.png' });
+    }
+});
+
+app.get('/qr-images/:imageName', async (req, res) => {
+    const { imageName } = req.params;
+    try {
+        const imagePath = await getQRImagePath(imageName);
+        if (!imagePath) {
+            res.status(404).send('Imagen no encontrada');
+            return;
+        }
+        res.sendFile(imagePath);
+    } catch (err) {
+        console.error('Error al obtener imagen .qr.png:', err);
+        res.status(500).json({ error: 'Error al obtener imagen .qr.png' });
+    }
+});
+
+// Puerto en el que escucha el servidor
 app.listen(port, () => {
     console.log(`Servidor escuchando en http://localhost:${port}`);
 });
-
