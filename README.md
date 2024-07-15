@@ -6,6 +6,11 @@ Las modificaciones aplicadas en la versión 1.0.0  son:
  1. Funcionamiento por api para crear clientes de whatsapp (sesiones de varios dispositivos)
  2. Envió de mensajes por api 
 
+Las modificaciones aplicadas en la versión 2.0.0  son:
+ 1. CRUD de cliente
+ 2. funciones de CRUD por apis
+ 
+
 --------------- INSTRUCCIONES ORIGINALES -------------------------
 
 ## Instalación
