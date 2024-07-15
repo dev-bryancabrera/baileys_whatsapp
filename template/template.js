@@ -2,7 +2,6 @@ const template = (id) => {
     return `    
 const express = require('express');
 const { createBot, createProvider, createFlow } = require('@bot-whatsapp/bot');
-const QRPortalWeb = require('@bot-whatsapp/portal');
 const BaileysProvider = require('@bot-whatsapp/provider/baileys');
 const JsonFileAdapter = require('@bot-whatsapp/database/json');
 
@@ -18,11 +17,6 @@ const main = async (app,parametro) => {
             flow: adapterFlow,
             provider: adapterProvider,
             database: adapterDB,
-        });
-
-        QRPortalWeb({
-            name: '${id}',
-            port: 4011
         });
 
         app.post('/send${id}', async (req, res) => {
@@ -52,16 +46,19 @@ const main = async (app,parametro) => {
             } catch (error) {
                 res.status(500);
                 res.json({ result: false, errorsms: error.message });
-            }
-           // const userId = adapterProvider.vendor.user.id;
-           // const userName = adapterProvider.vendor.user.name;        
-        
-           // res.send({
-                //message: 'Mensaje enviado',
-                //userId: userId,
-               // userName: userName
-            //});
+            }         
         });        
+
+        app.post('/user${id}', async (req, res) => {
+            try {
+                const userId = adapterProvider.vendor.user.id;
+                const userName = adapterProvider.vendor.user.name;
+                res.json({ result: true, userId: userId, userName: userName });
+            } catch (error) {
+                res.status(500);
+                res.json({ result: false, errorsms: error.message });
+            }
+        });
 
         return {
             result: true,
