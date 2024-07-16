@@ -8,8 +8,11 @@ const { Console } = require('console');
 const fs = require('fs').promises;
 const app = express();
 const port = 4010;
+const cors = require('cors');
+
 
 app.use(express.json()); // Middleware para parsear JSON
+app.use(cors()); // Middleware para habilitar CORS
 
 // Ruta para ejecutar la función en el archivo creado
 app.post('/ejecutar', async (req, res) => {
@@ -26,7 +29,7 @@ app.post('/ejecutar', async (req, res) => {
             const result = await createdFunction(app, parametro);
             console.log('Resultado de la función:', result);
 
-            res.send({result});
+            res.send({ result });
         } catch (error) {
             console.error('Error al ejecutar la función:', error);
             res.status(500).send({
@@ -84,7 +87,6 @@ app.get('/qr-images/:imageName', async (req, res) => {
 
 
 /* --------------------------- Manejo de usurios -------------------------------- */
-app.use(bodyParser.json());
 
 // Middleware para manejar errores
 app.use((err, req, res, next) => {
@@ -166,13 +168,14 @@ app.post('/registros', async (req, res) => {
         const registros = await getRegistros();
         const registro = registros.find(r => r.id_externo === id_externo);
         if (!registro) {
-            registros.push(nuevoRegistro);
-            await saveRegistros(registros);
-
             if (nombre && id_externo) {
                 let name = createFunction(id_externo);
                 sms = `Función ${name} creada`;
                 console.log(`---------------------------------- ${sms} ----------------------------------`);
+
+                registros.push(nuevoRegistro);
+                await saveRegistros(registros);
+
                 res.json({
                     result: true,
                     success: 'Registro creado correctamente',
@@ -188,7 +191,7 @@ app.post('/registros', async (req, res) => {
                 });
             }
         } else {
-            sms = `a existe un registro con el mismo ID`;
+            sms = `Ya existe un registro con el mismo ID`;
             console.log(`---------------------------------- ${sms} ----------------------------------`);
             res.status(400).send({
                 result: false,
@@ -196,7 +199,7 @@ app.post('/registros', async (req, res) => {
                 error: sms
             });
         }
-  
+
     } catch (err) {
         console.error('********************* Error al crear registro:', err);
         res.status(500).json({
@@ -207,7 +210,7 @@ app.post('/registros', async (req, res) => {
     }
 });
 
-// // Ruta para actualizar un registro existente por su id_externo
+// Ruta para eliminar un registro existente por su id_externo
 // app.put('/registros/:id_externo', async (req, res) => {
 //     const { id_externo } = req.params;
 //     const datosActualizados = req.body;
@@ -229,28 +232,63 @@ app.post('/registros', async (req, res) => {
 // });
 
 // Ruta para eliminar un registro por su id_externo
-app.delete('/registros/:id_externo', async (req, res) => {
-    const { id_externo } = req.params;
+app.delete('/registros/:id_externo/:tipo', async (req, res) => {
+    const { id_externo, tipo } = req.params;
     const nombreArchivo = `${id_externo}.js`;
     try {
-        // Construir la ruta completa al archivo a eliminar
-        const rutaArchivo = path.join(__dirname, 'functions', nombreArchivo);
-        // Verificar si el archivo existe
-        await fs.access(rutaArchivo);
+        if (tipo && tipo == 1) {
+            let registros = await getRegistros();
+            registros = registros.filter(r => r.id_externo !== id_externo);
+            await saveRegistros(registros);
 
-        let registros = await getRegistros();
-        registros = registros.filter(r => r.id_externo !== id_externo);
-        await saveRegistros(registros);
+            console.log(`---------------------------------- 1 SE ELIMINARON LAS FUNCIONES PARA ${id_externo} ----------------------------------`)
+            res.json({
+                result: true,
+                id: id_externo,
+                success: 'Registro eliminado correctamente 1',
+                error: ''
+            });
+        } else {
+            // Construir la ruta completa al archivo a eliminar
+            const rutaArchivo = path.join(__dirname, 'functions', nombreArchivo);
+            // Verificar si el archivo existe
+            await fs.access(rutaArchivo);
 
-        // eliminar archivo
-        await fs.unlink(rutaArchivo);
-        console.log(`---------------------------------- SE ELIMINARON LAS FUNCIONES PARA ${id_externo} ----------------------------------`)
-        res.json({
-            result: true,
-            id: id_externo,
-            success: 'Registro eliminado correctamente',
-            error: ''
-        });
+            // Construir la ruta completa a la imagen a eliminar
+            const rutaImagen = path.join(__dirname, `${id_externo}.qr.png`);
+            // Verificar si el archivo existe
+            await fs.access(rutaImagen);
+
+            const rutaCarpeta = path.join(__dirname, `${id_externo}_sessions`);
+            const stats = await fs.stat(rutaCarpeta);
+            if (stats.isDirectory()) {
+                await fs.rm(rutaCarpeta, { recursive: true });
+                console.log(`El directorio ${rutaCarpeta} existe y fuerón eliminados`);
+                let registros = await getRegistros();
+                registros = registros.filter(r => r.id_externo !== id_externo);
+                await saveRegistros(registros);
+
+                // eliminar archivo
+                await fs.unlink(rutaArchivo);
+
+                // eliminar imagen
+                await fs.access(rutaImagen);
+                console.log(`---------------------------------- SE ELIMINARON LAS FUNCIONES PARA ${id_externo} ----------------------------------`)
+                res.json({
+                    result: true,
+                    id: id_externo,
+                    success: 'Registro eliminado correctamente',
+                    error: ''
+                });
+            } else {
+                console.log(`La ruta ${directorioAVerificar} existe pero no es un directorio.`);
+                res.status(400).json({
+                    result: false,
+                    success: '',
+                    error: `La ruta ${directorioAVerificar} existe pero no es un directorio.`
+                });
+            }
+        }
     } catch (err) {
         if (err.code === 'ENOENT') {
             console.error(`********************* El archivo ${nombreArchivo} no existe.`);
