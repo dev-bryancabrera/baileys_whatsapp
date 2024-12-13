@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const template = require('./../template/template.js');
+const template = require('../template/template.js');
 
 const createFunction = (name) => {
     saveFunction(name);
